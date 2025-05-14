@@ -1,0 +1,47 @@
+{
+    "_comment": "Minecraft Egg com Instalador Interativo do GitHub de antonnygabriel",
+    "meta": {
+        "version": "1.0.1",
+        "update_url": null
+    },
+    "name": "Minecraft (Instalador Interativo - antonnygabriel)",
+    "author": "antonnygabrielmm@gmail.com",
+    "description": "TENTA instalar Minecraft usando o script interativo 'install.sh' do repositório GitHub de antonnygabriel. AVISO: Devido à natureza interativa do script de instalação, este Egg PROVAVELMENTE FALHARÁ durante a instalação automatizada do Pterodactyl, pois o script ficará esperando por entrada do usuário que não pode ser fornecida.",
+    "features": [
+        "java_version",
+        "eula"
+    ],
+    "docker_images": {
+        "Java 17": "ghcr.io/pterodactyl/yolks:java_17",
+        "Java 11": "ghcr.io/pterodactyl/yolks:java_11",
+        "Java 8": "ghcr.io/pterodactyl/yolks:java_8"
+    },
+    "file_denylist": [],
+    "startup": "./start.sh",
+    "config": {
+        "files": {
+            "server.properties": {
+                "parser": "properties",
+                "find": {
+                    "server-port": "{{server.build.default.port}}",
+                    "server-ip": "{{server.build.default.ip}}"
+                }
+            }
+        },
+        "startup": {
+            "done": "joined the game" 
+        },
+        "logs": {
+            "custom": true,
+            "location": "logs/latest.log"
+        }
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!/bin/ash\n\n# Definir o diretório de trabalho para /mnt/server\ncd /mnt/server || exit 1\n\napk update\n\n# Instalar dependências básicas no container de instalação\n# OpenJDK 17 JRE Headless é uma boa opção para Java.\n# O script install.sh do GitHub pode tentar instalar também, mas garantimos aqui.\napk add --no-cache curl jq openjdk17-jre-headless git\n\n# Verificar se Java foi instalado (apenas para log durante a instalação do egg)\nif command -v java &> /dev/null; then\n    echo \"Java instalado com sucesso no container de instalação:\"\n    java -version\nelse\n    echo \"AVISO: Java (openjdk17-jre-headless) não parece ter sido instalado corretamente pelo apk.\"\nfi\nif ! command -v jq &> /dev/null; then echo \"AVISO: jq não parece ter sido instalado corretamente.\"; fi\nif ! command -v curl &> /dev/null; then echo \"AVISO: curl não parece ter sido instalado corretamente.\"; fi\n\n# URL RAW do seu script install.sh no GitHub\n# Verifique se 'main' é o nome correto da branch principal do seu repositório (pode ser 'master')\nINSTALL_SCRIPT_URL=\"https://raw.githubusercontent.com/antonnygabriel/mineegg/main/install.sh\"\n\necho \"Baixando script de instalação de ${INSTALL_SCRIPT_URL}...\"\n# Usar curl para baixar o arquivo. A flag -L segue redirecionamentos.\ncurl -L \"${INSTALL_SCRIPT_URL}\" -o install.sh\n\nif [ ! -f install.sh ]; then\n    echo \"ERRO CRÍTICO: Falha ao baixar o script install.sh de ${INSTALL_SCRIPT_URL}. Verifique a URL e as permissões do repositório.\"\n    exit 1\nfi\n\n# Verificar se o arquivo baixado tem conteúdo (não está vazio)\nif [ ! -s install.sh ]; then \n    echo \"ERRO CRÍTICO: O arquivo install.sh baixado está vazio! Verifique o link RAW.\"\n    exit 1\nfi\n\nchmod +x install.sh\n\n# Limpar variáveis de ambiente que poderiam ser do Pterodactyl e confundir o script interativo\n# O script interativo é feito para perguntar tudo.\nunset SERVER_TYPE\nunset MINECRAFT_VERSION\nunset MODLOADER_INSTALLER_VERSION\n\necho \"\"\necho \"=======================================================================\"\necho \"AVISO IMPORTANTE SOBRE INTERATIVIDADE:\"\necho \"O script 'install.sh' baixado do GitHub é (presumivelmente) INTERATIVO.\"\necho \"Ele solicitará entradas (tipo de servidor, versão, etc.) no console.\"\necho \"O processo de instalação do Pterodactyl é NÃO INTERATIVO.\"\necho \"Portanto, é esperado que a instalação TRAVE ou FALHE POR TIMEOUT neste ponto.\"\necho \"Este Egg, com este script, é para fins de demonstração ou cenários MUITO específicos.\"\necho \"=======================================================================\"\necho \"\"\necho \"Tentando executar ./install.sh baixado do GitHub... (espera-se que trave se for interativo)\"\n\n# Executar o script baixado\n./install.sh\n\n# O Pterodactyl pode marcar a instalação como bem-sucedida se o script sair com código 0,\n# mesmo que ele não tenha feito o que deveria por causa da interatividade.\n# Verificações adicionais podem ser necessárias se o script travar e for morto pelo Pterodactyl.\nif [ ! -f start.sh ]; then\n    echo \"AVISO: O script install.sh não criou o arquivo start.sh esperado. Isso pode indicar que o script interativo não completou ou foi interrompido.\"\n    # Não usar exit 1 aqui para permitir que o Pterodactyl finalize e o usuário veja os logs, \n    # já que o travamento é o comportamento esperado.\nfi\n\necho \"Script de instalação (tentativa com script do GitHub) 'concluído'. Verifique os logs e o console do servidor para ver onde parou ou se houve erros.\"",
+            "container": "ghcr.io/pterodactyl/installers:alpine",
+            "entrypoint": "ash"
+        }
+    },
+    "variables": [] 
+}
